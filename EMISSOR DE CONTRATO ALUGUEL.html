@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Contrato Profissional</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        :root { --primary: #1a2a6c; --bg-site: #eef2f3; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-site); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 950px; width: 100%; margin-bottom: 40px; }
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 15px; }
+        .full { grid-column: span 2; }
+        .form-group label { display: block; font-size: 10px; font-weight: bold; color: #555; text-transform: uppercase; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 13px; }
+        h3 { grid-column: span 2; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 20px; color: var(--primary); font-size: 16px; }
+
+        .actions { display: flex; gap: 15px; margin-top: 30px; }
+        .btn { flex: 1; padding: 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; font-size: 14px; }
+        .btn-preview { background: #34495e; color: white; }
+        .btn-pdf { background: #27ae60; color: white; }
+
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #525659; width: 98%; max-width: 900px; height: 95vh; overflow-y: auto; padding: 20px; border-radius: 5px; position: relative; }
+        .close-btn { position: absolute; top: 10px; right: 25px; color: white; font-size: 40px; cursor: pointer; z-index: 1100; }
+
+        #documento-final { 
+            background: white; width: 210mm; margin: 0 auto;
+            padding: 15mm 20mm; 
+            font-family: "Times New Roman", Times, serif; color: black; 
+            line-height: 1.5; text-align: justify; font-size: 12pt; box-sizing: border-box;
+        }
+        
+        .header-title { text-align: center; font-weight: bold; font-size: 14pt; margin-bottom: 25px; text-decoration: underline; text-transform: uppercase; }
+        .clausula { font-weight: bold; margin-top: 15px; display: block; }
+        .page-break { page-break-before: always; }
+        
+        /* ESPAÇAMENTO AUMENTADO NAS ASSINATURAS */
+        .signature-area { margin-top: 50px; }
+        .sig-table { width: 100%; border-collapse: collapse; margin-top: 40px; }
+        .sig-cell { width: 50%; padding: 50px 10px 5px 10px; text-align: center; vertical-align: bottom; }
+        .sig-line { border-top: 1px solid black; width: 85%; margin: 0 auto 5px auto; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2 style="text-align: center; color: var(--primary);">Gerador de Contrato Profissional</h2>
+    
+    <div class="grid">
+        <h3>Partes Contratantes</h3>
+        <div class="form-group"><label>Nome do Locador</label><input type="text" id="fLocador"></div>
+        <div class="form-group"><label>CPF/CNPJ Locador</label><input type="text" id="fDocLocador"></div>
+        <div class="form-group"><label>Nome do Locatário</label><input type="text" id="fLocatario"></div>
+        <div class="form-group"><label>CPF/CNPJ Locatário</label><input type="text" id="fDocLocatario"></div>
+
+        <h3>Objeto e Termos</h3>
+        <div class="form-group full"><label>Endereço do Imóvel</label><input type="text" id="fEndereco"></div>
+        <div class="form-group full">
+            <label>Finalidade da Locação</label>
+            <select id="fTipoUso">
+                <option value="residenciais">RESIDENCIAL</option>
+                <option value="comerciais">COMERCIAL</option>
+                <option value="empresariais">EMPRESARIAL</option>
+                <option value="rurais">RURAL</option>
+                <option value="industriais">INDUSTRIAL</option>
+            </select>
+        </div>
+        <div class="form-group"><label>Valor Mensal (R$)</label><input type="text" id="fValor"></div>
+        <div class="form-group"><label>Prazo (Meses)</label><input type="number" id="fPrazo"></div>
+        <div class="form-group"><label>Dia Vencimento</label><input type="number" id="fVenc"></div>
+        <div class="form-group"><label>Data Início</label><input type="date" id="fInicio"></div>
+        <div class="form-group"><label>Data Término</label><input type="date" id="fFim"></div>
+        <div class="form-group"><label>Comarca (Foro)</label><input type="text" id="fForo"></div>
+        <div class="form-group full"><label>Local e Data de Assinatura</label><input type="text" id="fData"></div>
+
+        <div class="form-group full" style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
+            <input type="checkbox" id="fCheckT" onchange="toggleT()"> <b>Incluir Testemunhas</b>
+            <div id="inputsT" style="display:none; margin-top:10px;" class="grid">
+                <div class="form-group"><label>T1 Nome</label><input type="text" id="fT1N"></div>
+                <div class="form-group"><label>T1 CPF</label><input type="text" id="fT1C"></div>
+                <div class="form-group"><label>T2 Nome</label><input type="text" id="fT2N"></div>
+                <div class="form-group"><label>T2 CPF</label><input type="text" id="fT2C"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions">
+        <button class="btn btn-preview" onclick="abrirPreview()">Pré-visualizar</button>
+        <button class="btn btn-pdf" onclick="gerarPDF()">Gerar PDF</button>
+    </div>
+</div>
+
+<div id="modal">
+    <div class="modal-content">
+        <span class="close-btn" onclick="fecharPreview()">&times;</span>
+        <div id="documento-final">
+            <div class="header-title">CONTRATO DE LOCAÇÃO DE IMÓVEL</div>
+            
+            <p>Pelo presente instrumento particular, as partes abaixo identificadas:</p>
+            <p><strong>LOCADOR:</strong> <span id="rLocador">__________</span>, CPF/CNPJ n° <span id="rDocLocador">__________</span>.</p>
+            <p><strong>LOCATÁRIO:</strong> <span id="rLocatario">__________</span>, CPF/CNPJ n° <span id="rDocLocatario">__________</span>.</p>
+            <p>Têm entre si justo e contratado o que segue:</p>
+
+            <span class="clausula">CLÁUSULA 1ª - DO IMÓVEL</span>
+            <p>O LOCADOR aluga ao LOCATÁRIO o imóvel localizado à <span id="rEndereco">____________________</span>, destinado exclusivamente para fins <strong><span id="rTipoUso">residenciais</span></strong>.</p>
+
+            <span class="clausula">CLÁUSULA 2ª - DO PRAZO</span>
+            <p>O prazo da locação é de <span id="rPrazo">__</span> meses, iniciando-se em <span id="rInicio">__/__/__</span> e encerrando-se em <span id="rFim">__/__/__</span>.</p>
+
+            <span class="clausula">CLÁUSULA 3ª - DO VALOR DO ALUGUEL</span>
+            <p>O valor mensal do aluguel é de R$ <span id="rValor">_______</span>, a ser pago até o dia <span id="rVenc">___</span> de cada mês.</p>
+
+            <span class="clausula">CLÁUSULA 4ª - DOS ENCARGOS</span>
+            <p>São de responsabilidade do LOCATÁRIO: água, energia elétrica, gás, IPTU, condomínio e demais encargos que incidam sobre o imóvel.</p>
+
+            <span class="clausula">CLÁUSULA 5ª - DA CONSERVAÇÃO</span>
+            <p>O LOCATÁRIO se compromete a conservar o imóvel, devolvendo-o ao final da locação nas mesmas condições em que recebeu, ressalvado o desgaste natural.</p>
+
+            <span class="clausula">CLÁUSULA 6ª - DA RESCISÃO</span>
+            <p>O descumprimento de qualquer cláusula poderá acarretar a rescisão do contrato, conforme previsto na Lei nº 8.245/91 (Lei do Inquilinato).</p>
+
+            <div class="page-break">
+                <span class="clausula">CLÁUSULA 7ª - DO FORO</span>
+                <p>Fica eleito o foro da comarca de <span id="rForo">__________</span> para dirimir quaisquer dúvidas oriundas deste contrato.</p>
+
+                <p style="margin-top:20px;">E, por estarem justas e contratadas, assinam o presente instrumento em duas vias de igual teor.</p>
+                <p>Local e data: <span id="rData">__________</span></p>
+
+                <div class="signature-area">
+                    <table class="sig-table">
+                        <tr>
+                            <td class="sig-cell"><div class="sig-line"></div><strong>LOCADOR</strong></td>
+                            <td class="sig-cell"><div class="sig-line"></div><strong>LOCATÁRIO</strong></td>
+                        </tr>
+                    </table>
+                    <div id="rBoxT" style="display:none;">
+                        <table class="sig-table">
+                            <tr>
+                                <td class="sig-cell"><div class="sig-line"></div><strong>TESTEMUNHA 1</strong><br><span id="rT1N"></span> - <span id="rT1C"></span></td>
+                                <td class="sig-cell"><div class="sig-line"></div><strong>TESTEMUNHA 2</strong><br><span id="rT2N"></span> - <span id="rT2C"></span></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleT() { document.getElementById('inputsT').style.display = document.getElementById('fCheckT').checked ? 'grid' : 'none'; }
+
+    function popular() {
+        const ids = ['Locador', 'DocLocador', 'Locatario', 'DocLocatario', 'Endereco', 'Prazo', 'Valor', 'Venc', 'Foro', 'Data', 'TipoUso', 'T1N', 'T1C', 'T2N', 'T2C'];
+        ids.forEach(id => {
+            const val = document.getElementById('f'+id)?.value;
+            const el = document.getElementById('r'+id);
+            if(el) el.innerText = val || "__________";
+        });
+        const i = document.getElementById('fInicio').value;
+        const f = document.getElementById('fFim').value;
+        document.getElementById('rInicio').innerText = i ? i.split('-').reverse().join('/') : "__/__/____";
+        document.getElementById('rFim').innerText = f ? f.split('-').reverse().join('/') : "__/__/____";
+        document.getElementById('rBoxT').style.display = document.getElementById('fCheckT').checked ? 'block' : 'none';
+    }
+
+    function abrirPreview() { popular(); document.getElementById('modal').style.display = 'flex'; }
+    function fecharPreview() { document.getElementById('modal').style.display = 'none'; }
+
+    function gerarPDF() {
+        popular();
+        const element = document.getElementById('documento-final');
+        html2pdf().set({
+            margin: [10, 0, 10, 0],
+            filename: 'Contrato_Locacao.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 3, y: 0, scrollY: 0 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).from(element).save();
+    }
+</script>
+</body>
+</html>
